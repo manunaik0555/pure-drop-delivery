@@ -82,10 +82,10 @@ export default function Home() {
     e.preventDefault();
     let orderDetails = cart.map(item => `- ${item.brand} ${item.product} x${item.quantity} (₹${item.price * item.quantity})`).join("%0A");
     const requestText = formData.specialRequest ? `%0A%0A*SPECIAL REQUEST:* ${formData.specialRequest}` : "";
-    const message = `*BULK ORDER FROM PURE DROP*%0A%0A*ITEMS:*%0A${orderDetails}%0A%0A*TOTAL AMOUNT:* ₹${cartTotal}%0A%0A*CUSTOMER:* ${formData.name}%0A*PHONE:* ${formData.phone}%0A*ADDRESS:* ${formData.address}${requestText}`;
+    const message = `*BULK ORDER FROM SEETHA MAHESH ENTERPRISES*%0A%0A*ITEMS:*%0A${orderDetails}%0A%0A*TOTAL AMOUNT:* ₹${cartTotal}%0A%0A*CUSTOMER:* ${formData.name}%0A*PHONE:* ${formData.phone}%0A*ADDRESS:* ${formData.address}${requestText}`;
     
     // Save to WA and clear
-    window.open(`https://wa.me/918792837678?text=${message}`, "_blank");
+    window.open(`https://wa.me/916363273658?text=${message}`, "_blank");
     setCart([]);
     setIsCartOpen(false);
     setFormData({ name: "", phone: "", address: "", specialRequest: "" });
@@ -107,7 +107,7 @@ export default function Home() {
         <Link href="/dashboard" className="text-[10px] font-black text-blue-600 border border-blue-100 px-3 py-1 rounded-md uppercase">Admin</Link>
         <div className="flex items-center gap-2">
           <FaWater className="text-blue-500 text-xl" />
-          <h1 className="text-xl md:text-2xl font-black tracking-tighter text-blue-900 italic uppercase">PURE DROP</h1>
+          <h1 className="text-xl md:text-2xl font-black tracking-tighter text-blue-900 italic uppercase">SEETHA MAHESH ENTERPRISES</h1>
         </div>
         <button onClick={() => setIsCartOpen(true)} className="relative p-2 text-blue-900 hover:scale-110 transition-transform">
           <FaShoppingCart size={24} />
@@ -171,7 +171,7 @@ export default function Home() {
             <p className="text-blue-300 font-black uppercase tracking-widest text-[10px] mb-4">Owner & Distributor</p>
             <div className="flex gap-4 justify-center md:justify-start">
                <a href="tel:+918782837678" className="bg-white/10 px-4 py-2 rounded-xl font-black text-[10px] flex items-center gap-2 hover:bg-white/20 transition-all"><FaPhoneAlt /> CALL</a>
-               <a href="https://wa.me/918782837678" className="bg-green-500 px-4 py-2 rounded-xl font-black text-[10px] flex items-center gap-2 hover:bg-green-600 transition-all"><FaWhatsapp /> CHAT</a>
+               <a href="https://wa.me/916363273658" className="bg-green-500 px-4 py-2 rounded-xl font-black text-[10px] flex items-center gap-2 hover:bg-green-600 transition-all"><FaWhatsapp /> CHAT</a>
             </div>
           </div>
         </div>
@@ -185,9 +185,9 @@ export default function Home() {
               <div>
                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Our Address</p>
                 <p className="text-base font-bold text-slate-700 leading-relaxed">
-                  Pure Drop Water Agency,<br />
-                  Main Road, Near Vidya School,<br />
-                  Tumakuru, Karnataka - 572106
+                  Seetha Mahesh Enterprises,<br />
+                 bukkapattana Main Road, Near govardhan show room,<br />
+                   sira ,Tumakuru, Karnataka - 572137
                 </p>
               </div>
             </div>
@@ -253,7 +253,7 @@ export default function Home() {
       )}
 
       <footer className="text-center py-10 text-slate-400 font-black text-[9px] uppercase tracking-[0.4em]">
-        © 2026 Pure Drop • Managed by Gowtham Rathod • Tech by Manoj
+        © 2026 SEETHA MAHESH  ENTERPRISES • Managed by Gowtham Rathod • Tech by ManU
       </footer>
 
       <style jsx global>{`
