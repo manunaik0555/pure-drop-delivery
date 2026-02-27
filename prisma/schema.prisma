@@ -29,3 +29,9 @@ model Setting {
   id         Int    @id @default(autoincrement())
   liveTicker String
 }
+model Gallery {
+  id        Int      @id @default(autoincrement())
+  url       String
+  title     String
+  createdAt DateTime @default(now())
+}
