@@ -15,11 +15,9 @@ export default function Storefront() {
         const data = await getInitialData();
         setInventory(data.inventory);
         setLiveTicker(data.liveTicker);
-        if (data.inventory.length > 0) {
-          setSelectedBrand(data.inventory[0].brand);
-        }
+        if (data.inventory.length > 0) setSelectedBrand(data.inventory[0].brand.toUpperCase());
       } catch (error) {
-        console.error("Failed to load storefront:", error);
+        console.error("Storefront error:", error);
       } finally {
         setLoading(false);
       }
@@ -31,63 +29,66 @@ export default function Storefront() {
     (item) => item.brand.toUpperCase() === selectedBrand.toUpperCase()
   );
 
-  if (loading) return (
-    <div className="min-h-screen flex items-center justify-center font-black text-blue-900 uppercase italic">
-      Initializing Pure Drop...
-    </div>
-  );
+  if (loading) return <div className="min-h-screen flex items-center justify-center font-black text-blue-900 uppercase italic">Loading Pure Drop...</div>;
 
   return (
-    <div className="min-h-screen bg-slate-50 font-sans">
-      {/* 1. TICKER - Restored Original Pulse Style */}
-      <div className="bg-blue-600 text-white py-3 overflow-hidden shadow-md">
-        <div className="whitespace-nowrap animate-pulse px-4 text-center font-black uppercase tracking-widest text-[10px]">
-          {liveTicker}
+    <div className="min-h-screen bg-[#f8fafc] font-sans selection:bg-blue-100">
+      {/* 1. PREMIUM TICKER */}
+      <div className="bg-[#1e40af] text-white py-3 shadow-lg">
+        <div className="max-w-7xl mx-auto px-4 overflow-hidden">
+          <p className="animate-pulse text-center font-black uppercase tracking-[0.2em] text-[10px]">
+            {liveTicker}
+          </p>
         </div>
       </div>
 
-      {/* 2. HEADER - Restored Minimalist Style */}
-      <header className="bg-white p-6 flex justify-between items-center border-b border-slate-100">
-        <div className="text-[10px] font-black text-blue-600 uppercase italic">Admin</div>
-        <div className="flex flex-col items-center">
-          <div className="h-1 w-8 bg-blue-600 mb-1 rounded-full"></div>
-          <h1 className="font-black text-2xl text-blue-900 tracking-tighter italic uppercase">Pure Drop</h1>
-        </div>
-        <div className="text-blue-900">🛒</div>
+      {/* 2. DESIGNER HEADER */}
+      <header className="bg-white px-8 py-6 flex justify-between items-center border-b border-slate-100 sticky top-0 z-50 shadow-sm">
+        <div className="text-[10px] font-black text-blue-600 uppercase italic tracking-tighter border-2 border-blue-600 px-2 py-1 rounded">Admin</div>
+        <h1 className="font-black text-3xl text-[#1e3a8a] tracking-tighter italic uppercase flex items-center gap-2">
+          <span className="w-2 h-6 bg-blue-600 rounded-full inline-block"></span>
+          Pure Drop
+        </h1>
+        <div className="text-[#1e3a8a] text-2xl hover:scale-110 transition-transform cursor-pointer">🛒</div>
       </header>
 
-      <main className="max-w-6xl mx-auto p-8">
-        {/* 3. SELECTOR - Restored */}
-        <div className="flex flex-col items-center mb-12">
-          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Select Your Brand</label>
-          <select 
-            value={selectedBrand}
-            onChange={(e) => setSelectedBrand(e.target.value)}
-            className="bg-white border-4 border-white shadow-xl px-10 py-4 rounded-2xl font-black text-blue-900 uppercase italic tracking-tighter outline-none cursor-pointer"
-          >
-            {Array.from(new Set(inventory.map(i => i.brand))).map(brand => (
-              <option key={brand} value={brand}>{brand}</option>
-            ))}
-          </select>
+      <main className="max-w-6xl mx-auto p-8 pt-16">
+        {/* 3. BRAND SELECTOR - MATCHING SCREENSHOT */}
+        <div className="flex flex-col items-center mb-20">
+          <label className="text-[11px] font-black text-slate-400 uppercase tracking-[0.3em] mb-4">Select Your Brand</label>
+          <div className="relative group">
+            <select 
+              value={selectedBrand}
+              onChange={(e) => setSelectedBrand(e.target.value)}
+              className="bg-white border-[6px] border-white shadow-[0_20px_50px_rgba(30,58,138,0.15)] px-12 py-5 rounded-[2rem] font-black text-blue-900 uppercase italic tracking-tighter outline-none cursor-pointer appearance-none min-w-[300px] text-center text-lg"
+            >
+              {Array.from(new Set(inventory.map(i => i.brand.toUpperCase()))).map(brand => (
+                <option key={brand} value={brand}>{brand}</option>
+              ))}
+            </select>
+            <div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none text-blue-400">▼</div>
+          </div>
         </div>
 
-        {/* 4. PRODUCT GRID - Restored Blue Card Style */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        {/* 4. PRODUCT GRID - THE BLUE CARDS */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10">
           {filteredInventory.map((item) => (
-            <div key={item.id} className="bg-blue-600 text-white p-1 rounded-[2.5rem] shadow-2xl transition-transform hover:scale-105">
-              <div className="p-8 flex flex-col items-center text-center">
-                {/* Product Size Title */}
-                <h4 className="font-black text-sm uppercase tracking-widest mb-1">{item.product.split(' ')[0]}</h4>
-                <p className="text-[9px] font-bold text-blue-200 uppercase mb-6">{item.product}</p>
+            <div key={item.id} className="bg-[#2563eb] text-white rounded-[3rem] shadow-[0_25px_60px_-15px_rgba(37,99,235,0.4)] overflow-hidden transform transition-all duration-300 hover:-translate-y-4 hover:shadow-[0_40px_80px_-15px_rgba(37,99,235,0.5)]">
+              <div className="p-10 flex flex-col items-center">
+                {/* Visual Icon Area */}
+                <div className="mb-8 opacity-20">
+                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 2v20M2 12h20M5 5l14 14M19 5L5 14"/></svg>
+                </div>
                 
-                {/* Price Label Styling */}
-                <div className="bg-blue-500/30 w-full py-4 rounded-2xl mb-6 border border-blue-400/20">
-                  <span className="font-black text-2xl tracking-tighter">₹{item.price}</span>
+                <h4 className="font-black text-lg uppercase tracking-widest mb-1 italic">{item.product.split(' ')[0]}</h4>
+                <p className="text-[10px] font-bold text-blue-100 uppercase mb-8 tracking-widest opacity-80">{item.product}</p>
+                
+                <div className="bg-[#1d4ed8] w-full py-5 rounded-3xl mb-8 border border-blue-400/20 shadow-inner">
+                  <span className="font-black text-3xl tracking-tighter italic">₹{item.price}</span>
                 </div>
 
-                {/* Add to Cart Button Styling */}
-                <button className="bg-white text-blue-600 w-full py-4 rounded-[1.5rem] font-black text-[10px] uppercase tracking-widest shadow-lg hover:bg-slate-100 transition-colors">
-                  Add to Cart
+                <button className="bg-white text-[#2563eb] w-full py-5 rounded-[2rem] font-black text-[11px] uppercase tracking-[0.2em] shadow-xl hover:bg-blue-50 transition-all active:scale-95">
+                  + Add to Cart
                 </button>
               </div>
             </div>
@@ -95,20 +96,19 @@ export default function Storefront() {
         </div>
       </main>
 
-      {/* 5. AUTHOR PROFILES - As requested */}
-      <footer className="max-w-6xl mx-auto p-12 mt-12 border-t border-slate-200">
-        <div className="flex flex-col md:flex-row justify-center items-center gap-12">
-          {/* Developer Profile */}
-          <div className="flex flex-col items-center gap-2">
-            <div className="w-16 h-16 bg-blue-900 rounded-full flex items-center justify-center text-white font-black italic">MN</div>
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Lead Developer</p>
-            <h5 className="font-black text-blue-900 uppercase italic tracking-tighter">Manu Naik K</h5>
+      {/* 5. AUTHOR PROFILES */}
+      <footer className="max-w-6xl mx-auto px-8 py-20 mt-20 border-t border-slate-200">
+        <div className="flex flex-col md:flex-row justify-center items-center gap-16">
+          <div className="flex flex-col items-center group">
+            <div className="w-20 h-20 bg-[#1e3a8a] rounded-3xl rotate-3 group-hover:rotate-12 transition-transform flex items-center justify-center text-white font-black italic shadow-xl mb-4">MN</div>
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Lead Developer</p>
+            <h5 className="font-black text-[#1e3a8a] uppercase italic tracking-tighter text-lg">Manu Naik K</h5>
           </div>
-          {/* UI/UX Profile */}
-          <div className="flex flex-col items-center gap-2">
-            <div className="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center text-white font-black italic">UI</div>
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">UI/UX Designer</p>
-            <h5 className="font-black text-blue-900 uppercase italic tracking-tighter">Designer Team</h5>
+          
+          <div className="flex flex-col items-center group">
+            <div className="w-20 h-20 bg-[#2563eb] rounded-3xl -rotate-3 group-hover:-rotate-12 transition-transform flex items-center justify-center text-white font-black italic shadow-xl mb-4">UI</div>
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">UI/UX Designer</p>
+            <h5 className="font-black text-[#1e3a8a] uppercase italic tracking-tighter text-lg">Design Team</h5>
           </div>
         </div>
       </footer>
