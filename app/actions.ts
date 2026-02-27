@@ -12,7 +12,7 @@ export async function getInitialData() {
   // Ensure a settings row exists for the ticker
   let setting = await prisma.setting.findUnique({ where: { id: 1 } });
   if (!setting) {
-    setting = await prisma.setting.create({ data: { id: 1, liveTicker: "Welcome to Pure Drop! 24/7 Delivery." } });
+    setting = await prisma.setting.create({ data: { id: 1, liveTicker: "Welcome to Seetha Mahesh Enterprises!" } });
   }
 
   return { inventory, orders, liveTicker: setting.liveTicker };
@@ -46,5 +46,28 @@ export async function updateTickerAction(liveTicker: string) {
   return await prisma.setting.update({
     where: { id: 1 },
     data: { liveTicker }
+  });
+}
+
+// --- MISSING GALLERY FUNCTIONS ---
+
+// 6. Fetch gallery images
+export async function getGalleryImages() {
+  return await prisma.gallery.findMany({
+    orderBy: { createdAt: 'desc' }
+  });
+}
+
+// 7. Add a new gallery image
+export async function addGalleryImage(url: string, title: string) {
+  return await prisma.gallery.create({
+    data: { url, title }
+  });
+}
+
+// 8. Delete a gallery image
+export async function deleteGalleryImage(id: number) {
+  return await prisma.gallery.delete({
+    where: { id }
   });
 }
