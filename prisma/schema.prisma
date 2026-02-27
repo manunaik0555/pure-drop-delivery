@@ -4,83 +4,28 @@ generator client {
 
 datasource db {
   provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+  url       = env("POSTGRES_PRISMA_URL") // Vercel's pooled connection
+  directUrl = env("POSTGRES_URL_NON_POOLING") // Vercel's direct connection
 }
 
-// 1. Users (Handles both your Admin accounts and Customers)
-model User {
-  id            String         @id @default(uuid())
-  name          String
-  email         String         @unique
-  phone         String?
-  address       String?
-  role          Role           @default(CUSTOMER)
-  orders        Order[]
-  subscriptions Subscription[]
-  createdAt     DateTime       @default(now())
+model Inventory {
+  id      Int    @id @default(autoincrement())
+  brand   String
+  product String
+  stock   Int
+  price   Int
 }
 
-enum Role {
-  CUSTOMER
-  ADMIN
-  DRIVER 
-}
-
-// 2. Products (e.g., 20L Water Can, 1L Bottle Box)
-model Product {
-  id            String         @id @default(uuid())
-  name          String
-  price         Float
-  stockQuantity Int            @default(0)
-  subscriptions Subscription[]
-  orderItems    OrderItem[]
-}
-
-// 3. One-time Orders
 model Order {
-  id           String      @id @default(uuid())
-  userId       String
-  user         User        @relation(fields: [userId], references: [id])
-  totalAmount  Float
-  status       OrderStatus @default(PENDING)
-  items        OrderItem[]
-  createdAt    DateTime    @default(now())
-  deliveryDate DateTime?
+  id       String @id
+  date     String
+  customer String
+  items    String
+  total    Int
+  status   String
 }
 
-model OrderItem {
-  id        String  @id @default(uuid())
-  orderId   String
-  order     Order   @relation(fields: [orderId], references: [id])
-  productId String
-  product   Product @relation(fields: [productId], references: [id])
-  quantity  Int
-}
-
-enum OrderStatus {
-  PENDING
-  OUT_FOR_DELIVERY
-  DELIVERED
-  CANCELLED
-}
-
-// 4. Recurring Deliveries
-model Subscription {
-  id               String    @id @default(uuid())
-  userId           String
-  user             User      @relation(fields: [userId], references: [id])
-  productId        String
-  product          Product   @relation(fields: [productId], references: [id])
-  frequency        Frequency
-  quantityPerDrop  Int       @default(1)
-  nextDeliveryDate DateTime
-  isActive         Boolean   @default(true)
-}
-
-enum Frequency {
-  DAILY
-  WEEKLY
-  BI_WEEKLY
-  MONTHLY
+model Setting {
+  id         Int    @id @default(autoincrement())
+  liveTicker String
 }

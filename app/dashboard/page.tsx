@@ -6,7 +6,12 @@ import {
   FaBoxOpen, FaClipboardList, FaChartLine, 
   FaPlus, FaTimes, FaSave, FaArrowLeft, FaFileExcel, FaCog, FaTag, FaCheck 
 } from "react-icons/fa";
-import { supabase } from "../supabaseClient"; // Connects to your new cloud database!
+
+// NEW: Import our secure server actions instead of Supabase!
+import { 
+  getInitialData, addStockAction, updateStockAction, 
+  toggleOrderStatusAction, updateTickerAction 
+} from "../actions";
 
 const standardSizes = [
   "20L Water Can",
@@ -30,28 +35,24 @@ export default function AdminDashboard() {
   const [newItem, setNewItem] = useState({ brand: brands[0], product: standardSizes[0], stock: 0, price: 0 });
   const [editingItem, setEditingItem] = useState<any>(null);
 
-  // --- FETCH DATA FROM SUPABASE ON STARTUP ---
+  // --- FETCH DATA VIA PRISMA ---
   useEffect(() => {
-    fetchDatabase();
+    loadDatabase();
   }, []);
 
-  const fetchDatabase = async () => {
-    // 1. Fetch Orders
-    const { data: ordersData } = await supabase.from('orders').select('*').order('date', { ascending: false });
-    if (ordersData) setOrders(ordersData);
-
-    // 2. Fetch Inventory
-    const { data: invData } = await supabase.from('inventory').select('*').order('id', { ascending: true });
-    if (invData) {
-      setInventory(invData);
-      const existingBrands = new Set(invData.map((i: any) => i.brand));
-      ["Pure Drop", "Bisleri", "Kinley"].forEach(b => existingBrands.add(b)); // Keep default brands available
+  const loadDatabase = async () => {
+    try {
+      const data = await getInitialData();
+      setInventory(data.inventory);
+      setOrders(data.orders);
+      setLiveTicker(data.liveTicker);
+      
+      const existingBrands = new Set(data.inventory.map((i: any) => i.brand));
+      ["Pure Drop", "Bisleri", "Kinley"].forEach(b => existingBrands.add(b)); 
       setBrands(Array.from(existingBrands) as string[]);
+    } catch (error) {
+      console.error("Failed to load initial data", error);
     }
-
-    // 3. Fetch Live Ticker
-    const { data: settingsData } = await supabase.from('settings').select('*').eq('id', 1).single();
-    if (settingsData) setLiveTicker(settingsData.live_ticker);
   };
 
   const downloadExcel = () => {
@@ -75,29 +76,16 @@ export default function AdminDashboard() {
     }
   };
 
-  // --- UPGRADED: SAVE ITEM TO SUPABASE (WITH ERROR ALERTS) ---
+  // --- ADD ITEM VIA PRISMA ---
   const handleAddItem = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Attempt to send data to the cloud
-    const { data, error } = await supabase.from('inventory').insert([
-      { 
-        brand: newItem.brand, 
-        product: newItem.product, 
-        stock: newItem.stock, 
-        price: newItem.price 
-      }
-    ]).select();
-    
-    // If Supabase blocks it, pop up an alert with the exact reason!
-    if (error) {
-      alert("Database Error: " + error.message);
-      console.error("Full Error:", error);
-    } else if (data) {
-      // If successful, update the UI and close the modal
-      setInventory([...inventory, data[0]]);
+    try {
+      const savedItem = await addStockAction(newItem.brand, newItem.product, newItem.stock, newItem.price);
+      setInventory([...inventory, savedItem]);
       setIsAddModalOpen(false);
-      alert("Item successfully added to the cloud database!");
+      alert("Item successfully added to Vercel Database!");
+    } catch (error: any) {
+      alert("Database Error: " + error.message);
     }
   };
 
@@ -106,49 +94,41 @@ export default function AdminDashboard() {
     setIsEditModalOpen(true);
   };
 
-  // --- UPDATE ITEM IN SUPABASE ---
+  // --- UPDATE ITEM VIA PRISMA ---
   const handleUpdateItem = async (e: React.FormEvent) => {
     e.preventDefault();
-    const { data, error } = await supabase.from('inventory')
-      .update({ stock: editingItem.stock, price: editingItem.price, brand: editingItem.brand, product: editingItem.product })
-      .eq('id', editingItem.id)
-      .select();
-
-    if (error) {
-      alert("Error updating item: " + error.message);
-    } else if (data) {
-      setInventory(inventory.map(item => item.id === editingItem.id ? data[0] : item));
+    try {
+      const updatedItem = await updateStockAction(editingItem.id, editingItem.brand, editingItem.product, editingItem.stock, editingItem.price);
+      setInventory(inventory.map(item => item.id === editingItem.id ? updatedItem : item));
       setIsEditModalOpen(false);
       setEditingItem(null); 
+    } catch (error: any) {
+      alert("Error updating item: " + error.message);
     }
   };
 
-  // --- UPDATE TICKER IN SUPABASE ---
+  // --- UPDATE TICKER VIA PRISMA ---
   const handleUpdateTicker = async () => {
-    const { error } = await supabase.from('settings').update({ live_ticker: liveTicker }).eq('id', 1);
-    if (error) {
-      alert("Error saving notification: " + error.message);
-    } else {
+    try {
+      await updateTickerAction(liveTicker);
       alert("Live Notification saved to the cloud! Check the storefront.");
+    } catch (error: any) {
+      alert("Error saving notification: " + error.message);
     }
   };
 
-  // --- UPDATE ORDER STATUS IN SUPABASE ---
+  // --- UPDATE ORDER STATUS VIA PRISMA ---
   const handleToggleOrderStatus = async (orderId: string) => {
     const order = orders.find(o => o.id === orderId);
     if (!order) return;
     
     const newStatus = order.status === "Pending" ? "Delivered" : "Pending";
 
-    const { data, error } = await supabase.from('orders')
-      .update({ status: newStatus })
-      .eq('id', orderId)
-      .select();
-
-    if (error) {
+    try {
+      const updatedOrder = await toggleOrderStatusAction(orderId, newStatus);
+      setOrders(orders.map(o => o.id === orderId ? updatedOrder : o));
+    } catch (error: any) {
        alert("Error updating status: " + error.message);
-    } else if (data) {
-       setOrders(orders.map(o => o.id === orderId ? data[0] : o));
     }
   };
 
@@ -181,7 +161,7 @@ export default function AdminDashboard() {
         <header className="flex justify-between items-center mb-10">
           <div>
             <h2 className="text-4xl font-black text-blue-900 tracking-tighter italic uppercase">{activeTab}</h2>
-            <p className="text-slate-400 font-bold">Pure Drop Management System (Cloud Database)</p>
+            <p className="text-slate-400 font-bold">Pure Drop Management System (Vercel Database)</p>
           </div>
         </header>
 
