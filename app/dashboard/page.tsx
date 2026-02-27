@@ -3,9 +3,10 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { 
-  FaBoxOpen, FaClipboardList, FaUsers, FaChartLine, 
-  FaPlus, FaSignOutAlt, FaTimes, FaSave, FaArrowLeft, FaFileExcel, FaCog, FaTag, FaCheck 
+  FaBoxOpen, FaClipboardList, FaChartLine, 
+  FaPlus, FaTimes, FaSave, FaArrowLeft, FaFileExcel, FaCog, FaTag, FaCheck 
 } from "react-icons/fa";
+import { supabase } from "../supabaseClient"; // Connects to your new cloud database!
 
 const standardSizes = [
   "20L Water Can",
@@ -21,36 +22,37 @@ export default function AdminDashboard() {
   const [isBrandModalOpen, setIsBrandModalOpen] = useState(false);
 
   const [brands, setBrands] = useState(["Pure Drop", "Bisleri", "Kinley"]);
-  const [liveTicker, setLiveTicker] = useState("✨ 24/7 Doorstep Delivery ✨ Bundle your orders and save! ✨ Managed by Gowtham Rathod ✨");
+  const [liveTicker, setLiveTicker] = useState("Loading...");
   const [newBrandName, setNewBrandName] = useState("");
   
-  const [inventory, setInventory] = useState([
-    { id: 1, brand: "Pure Drop", product: "20L Water Can", stock: 120, price: 40 },
-    { id: 2, brand: "Bisleri", product: "1L Case (12)", stock: 45, price: 300 },
-    { id: 3, brand: "Kinley", product: "500ml Case (24)", stock: 30, price: 220 },
-  ]);
-
+  const [inventory, setInventory] = useState<any[]>([]);
   const [orders, setOrders] = useState<any[]>([]);
   const [newItem, setNewItem] = useState({ brand: brands[0], product: standardSizes[0], stock: 0, price: 0 });
   const [editingItem, setEditingItem] = useState<any>(null);
 
-  // --- LOAD DATA ON STARTUP ---
+  // --- FETCH DATA FROM SUPABASE ON STARTUP ---
   useEffect(() => {
-    const savedOrders = JSON.parse(localStorage.getItem("pureDropOrders") || "[]");
-    if (savedOrders.length > 0) setOrders(savedOrders);
+    fetchDatabase();
+  }, []);
 
-    const savedInventory = JSON.parse(localStorage.getItem("pureDropInventory") || "[]");
-    if (savedInventory.length > 0) {
-      setInventory(savedInventory);
-      const existingBrands = new Set(savedInventory.map((i: any) => i.brand));
+  const fetchDatabase = async () => {
+    // 1. Fetch Orders
+    const { data: ordersData } = await supabase.from('orders').select('*').order('date', { ascending: false });
+    if (ordersData) setOrders(ordersData);
+
+    // 2. Fetch Inventory
+    const { data: invData } = await supabase.from('inventory').select('*').order('id', { ascending: true });
+    if (invData) {
+      setInventory(invData);
+      const existingBrands = new Set(invData.map((i: any) => i.brand));
+      ["Pure Drop", "Bisleri", "Kinley"].forEach(b => existingBrands.add(b)); // Keep default brands available
       setBrands(Array.from(existingBrands) as string[]);
-    } else {
-      localStorage.setItem("pureDropInventory", JSON.stringify(inventory));
     }
 
-    const savedTicker = localStorage.getItem("pureDropTicker");
-    if (savedTicker) setLiveTicker(savedTicker);
-  }, []);
+    // 3. Fetch Live Ticker
+    const { data: settingsData } = await supabase.from('settings').select('*').eq('id', 1).single();
+    if (settingsData) setLiveTicker(settingsData.live_ticker);
+  };
 
   const downloadExcel = () => {
     const headers = "Order ID,Date,Customer,Items,Total Amount,Status\n";
@@ -69,16 +71,34 @@ export default function AdminDashboard() {
       setBrands([...brands, newBrandName]);
       setNewBrandName("");
       setIsBrandModalOpen(false);
-      alert(`${newBrandName} added successfully!`);
+      alert(`${newBrandName} added successfully! You can now add stock for it.`);
     }
   };
 
-  const handleAddItem = (e: React.FormEvent) => {
+  // --- UPGRADED: SAVE ITEM TO SUPABASE (WITH ERROR ALERTS) ---
+  const handleAddItem = async (e: React.FormEvent) => {
     e.preventDefault();
-    const newInv = [...inventory, { id: Date.now(), ...newItem }];
-    setInventory(newInv);
-    localStorage.setItem("pureDropInventory", JSON.stringify(newInv)); 
-    setIsAddModalOpen(false);
+    
+    // Attempt to send data to the cloud
+    const { data, error } = await supabase.from('inventory').insert([
+      { 
+        brand: newItem.brand, 
+        product: newItem.product, 
+        stock: newItem.stock, 
+        price: newItem.price 
+      }
+    ]).select();
+    
+    // If Supabase blocks it, pop up an alert with the exact reason!
+    if (error) {
+      alert("Database Error: " + error.message);
+      console.error("Full Error:", error);
+    } else if (data) {
+      // If successful, update the UI and close the modal
+      setInventory([...inventory, data[0]]);
+      setIsAddModalOpen(false);
+      alert("Item successfully added to the cloud database!");
+    }
   };
 
   const openEditModal = (item: any) => {
@@ -86,33 +106,50 @@ export default function AdminDashboard() {
     setIsEditModalOpen(true);
   };
 
-  const handleUpdateItem = (e: React.FormEvent) => {
+  // --- UPDATE ITEM IN SUPABASE ---
+  const handleUpdateItem = async (e: React.FormEvent) => {
     e.preventDefault();
-    const newInv = inventory.map(item => item.id === editingItem.id ? editingItem : item);
-    setInventory(newInv);
-    localStorage.setItem("pureDropInventory", JSON.stringify(newInv)); 
-    setIsEditModalOpen(false);
-    setEditingItem(null); 
+    const { data, error } = await supabase.from('inventory')
+      .update({ stock: editingItem.stock, price: editingItem.price, brand: editingItem.brand, product: editingItem.product })
+      .eq('id', editingItem.id)
+      .select();
+
+    if (error) {
+      alert("Error updating item: " + error.message);
+    } else if (data) {
+      setInventory(inventory.map(item => item.id === editingItem.id ? data[0] : item));
+      setIsEditModalOpen(false);
+      setEditingItem(null); 
+    }
   };
 
-  const handleUpdateTicker = () => {
-    localStorage.setItem("pureDropTicker", liveTicker);
-    alert("Live Notification updated successfully! Check the storefront.");
+  // --- UPDATE TICKER IN SUPABASE ---
+  const handleUpdateTicker = async () => {
+    const { error } = await supabase.from('settings').update({ live_ticker: liveTicker }).eq('id', 1);
+    if (error) {
+      alert("Error saving notification: " + error.message);
+    } else {
+      alert("Live Notification saved to the cloud! Check the storefront.");
+    }
   };
 
-  // --- NEW: UPDATE ORDER STATUS ---
-  const handleToggleOrderStatus = (orderId: string) => {
-    const updatedOrders = orders.map(order => {
-      if (order.id === orderId) {
-        // Toggle between Pending and Delivered
-        return { ...order, status: order.status === "Pending" ? "Delivered" : "Pending" };
-      }
-      return order;
-    });
+  // --- UPDATE ORDER STATUS IN SUPABASE ---
+  const handleToggleOrderStatus = async (orderId: string) => {
+    const order = orders.find(o => o.id === orderId);
+    if (!order) return;
     
-    setOrders(updatedOrders);
-    // Save the updated status back to the local storage bridge
-    localStorage.setItem("pureDropOrders", JSON.stringify(updatedOrders));
+    const newStatus = order.status === "Pending" ? "Delivered" : "Pending";
+
+    const { data, error } = await supabase.from('orders')
+      .update({ status: newStatus })
+      .eq('id', orderId)
+      .select();
+
+    if (error) {
+       alert("Error updating status: " + error.message);
+    } else if (data) {
+       setOrders(orders.map(o => o.id === orderId ? data[0] : o));
+    }
   };
 
   return (
@@ -144,7 +181,7 @@ export default function AdminDashboard() {
         <header className="flex justify-between items-center mb-10">
           <div>
             <h2 className="text-4xl font-black text-blue-900 tracking-tighter italic uppercase">{activeTab}</h2>
-            <p className="text-slate-400 font-bold">Pure Drop Management System</p>
+            <p className="text-slate-400 font-bold">Pure Drop Management System (Cloud Database)</p>
           </div>
         </header>
 
@@ -178,36 +215,40 @@ export default function AdminDashboard() {
                 </button>
               </div>
             </div>
-            <table className="w-full text-left">
-              <thead className="bg-slate-50 text-slate-400 text-[10px] font-black uppercase tracking-widest">
-                <tr>
-                  <th className="px-10 py-5">Brand</th>
-                  <th className="px-10 py-5">Product Size</th>
-                  <th className="px-10 py-5">Stock</th>
-                  <th className="px-10 py-5">Price</th>
-                  <th className="px-10 py-5 text-center">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-50">
-                {inventory.map((item) => (
-                  <tr key={item.id} className="hover:bg-blue-50/50 transition-colors">
-                    <td className="px-10 py-6 font-black text-blue-600 uppercase text-xs">{item.brand}</td>
-                    <td className="px-10 py-6 font-bold text-slate-700">{item.product}</td>
-                    <td className="px-10 py-6 font-black">{item.stock} Units</td>
-                    <td className="px-10 py-6 font-black text-blue-900 text-lg">₹{item.price}</td>
-                    <td className="px-10 py-6 text-center">
-                      <button onClick={() => openEditModal(item)} className="text-blue-500 font-black text-[10px] uppercase hover:underline">
-                        Edit Item
-                      </button>
-                    </td>
+            
+            {inventory.length === 0 ? (
+              <div className="p-20 text-center text-slate-400 font-bold italic">Your database is currently empty. Click "Add Stock" to add your first item!</div>
+            ) : (
+              <table className="w-full text-left">
+                <thead className="bg-slate-50 text-slate-400 text-[10px] font-black uppercase tracking-widest">
+                  <tr>
+                    <th className="px-10 py-5">Brand</th>
+                    <th className="px-10 py-5">Product Size</th>
+                    <th className="px-10 py-5">Stock</th>
+                    <th className="px-10 py-5">Price</th>
+                    <th className="px-10 py-5 text-center">Action</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-slate-50">
+                  {inventory.map((item) => (
+                    <tr key={item.id} className="hover:bg-blue-50/50 transition-colors">
+                      <td className="px-10 py-6 font-black text-blue-600 uppercase text-xs">{item.brand}</td>
+                      <td className="px-10 py-6 font-bold text-slate-700">{item.product}</td>
+                      <td className="px-10 py-6 font-black">{item.stock} Units</td>
+                      <td className="px-10 py-6 font-black text-blue-900 text-lg">₹{item.price}</td>
+                      <td className="px-10 py-6 text-center">
+                        <button onClick={() => openEditModal(item)} className="text-blue-500 font-black text-[10px] uppercase hover:underline">
+                          Edit Item
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </div>
         )}
 
-        {/* --- UPDATED ORDERS TAB --- */}
         {activeTab === "Orders" && (
           <div className="bg-white rounded-[3rem] shadow-xl border border-blue-50 overflow-hidden animate-in slide-in-from-bottom-5 duration-500">
             <div className="p-8 border-b border-slate-50 bg-blue-50/30 flex justify-between items-center">
@@ -216,47 +257,51 @@ export default function AdminDashboard() {
                 <FaFileExcel size={16} /> Download Excel
               </button>
             </div>
-            <table className="w-full text-left">
-              <thead className="bg-slate-50 text-slate-400 text-[10px] font-black uppercase tracking-widest">
-                <tr>
-                  <th className="px-10 py-5">Order ID</th>
-                  <th className="px-10 py-5">Date</th>
-                  <th className="px-10 py-5">Customer</th>
-                  <th className="px-10 py-5">Items</th>
-                  <th className="px-10 py-5">Status</th>
-                  <th className="px-10 py-5 text-center">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-50">
-                {orders.map((order) => (
-                  <tr key={order.id} className="hover:bg-blue-50/50 transition-colors">
-                    <td className="px-10 py-6 font-black text-blue-600 text-xs">{order.id}</td>
-                    <td className="px-10 py-6 font-bold text-slate-500 text-xs">{order.date}</td>
-                    <td className="px-10 py-6 font-bold text-slate-700">{order.customer}</td>
-                    <td className="px-10 py-6 font-medium text-slate-500 italic text-sm">{order.items}</td>
-                    <td className="px-10 py-6">
-                      <span className={`px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${order.status === "Delivered" ? "bg-green-100 text-green-600" : "bg-yellow-100 text-yellow-600"}`}>
-                        {order.status}
-                      </span>
-                    </td>
-                    <td className="px-10 py-6 text-center">
-                      {order.status === "Pending" ? (
-                        <button 
-                          onClick={() => handleToggleOrderStatus(order.id)}
-                          className="bg-green-500 hover:bg-green-600 text-white font-black text-[9px] uppercase tracking-widest px-4 py-2 rounded-xl shadow-md transition-all"
-                        >
-                          Mark Delivered
-                        </button>
-                      ) : (
-                        <span className="text-slate-300 font-bold text-[10px] uppercase tracking-widest flex items-center justify-center gap-1">
-                          <FaCheck /> Completed
-                        </span>
-                      )}
-                    </td>
+            {orders.length === 0 ? (
+              <div className="p-20 text-center text-slate-400 font-bold italic">No orders received yet!</div>
+            ) : (
+              <table className="w-full text-left">
+                <thead className="bg-slate-50 text-slate-400 text-[10px] font-black uppercase tracking-widest">
+                  <tr>
+                    <th className="px-10 py-5">Order ID</th>
+                    <th className="px-10 py-5">Date</th>
+                    <th className="px-10 py-5">Customer</th>
+                    <th className="px-10 py-5">Items</th>
+                    <th className="px-10 py-5">Status</th>
+                    <th className="px-10 py-5 text-center">Action</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-slate-50">
+                  {orders.map((order) => (
+                    <tr key={order.id} className="hover:bg-blue-50/50 transition-colors">
+                      <td className="px-10 py-6 font-black text-blue-600 text-xs">{order.id}</td>
+                      <td className="px-10 py-6 font-bold text-slate-500 text-xs">{order.date}</td>
+                      <td className="px-10 py-6 font-bold text-slate-700">{order.customer}</td>
+                      <td className="px-10 py-6 font-medium text-slate-500 italic text-sm">{order.items}</td>
+                      <td className="px-10 py-6">
+                        <span className={`px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${order.status === "Delivered" ? "bg-green-100 text-green-600" : "bg-yellow-100 text-yellow-600"}`}>
+                          {order.status}
+                        </span>
+                      </td>
+                      <td className="px-10 py-6 text-center">
+                        {order.status === "Pending" ? (
+                          <button 
+                            onClick={() => handleToggleOrderStatus(order.id)}
+                            className="bg-green-500 hover:bg-green-600 text-white font-black text-[9px] uppercase tracking-widest px-4 py-2 rounded-xl shadow-md transition-all"
+                          >
+                            Mark Delivered
+                          </button>
+                        ) : (
+                          <span className="text-slate-300 font-bold text-[10px] uppercase tracking-widest flex items-center justify-center gap-1">
+                            <FaCheck /> Completed
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </div>
         )}
 
