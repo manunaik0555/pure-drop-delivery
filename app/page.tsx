@@ -61,11 +61,12 @@ export default function Home() {
           <FaAward className="text-yellow-500" /> Premium Function Supplier · Sira
         </div>
         <h2 className="text-5xl md:text-8xl font-black leading-[0.9] tracking-tighter mb-8 italic uppercase text-white">
-          THE GOLD STANDARD <br /> 
-          <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-cyan-400">OF PURITY.</span>
+          ಗೋಲ್ಡ್ ಸ್ಟ್ಯಾಂಡರ್ಡ್
+ಶುದ್ಧತೆ <br /> 
+          <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-cyan-400"></span>
         </h2>
         <p className="text-[#8fa3c0] text-lg max-w-xl mx-auto mb-12 leading-relaxed">
-          Premium water case distribution engineered for grand functions and corporate events across Sira.
+          ಸಿರಾದಾದ್ಯಂತ ಗ್ರ್ಯಾಂಡ್ ಫಂಕ್ಷನ್‌ಗಳು ಮತ್ತು ಕಾರ್ಪೊರೇಟ್ ಈವೆಂಟ್‌ಗಳಿಗೆ ಪ್ರೀಮಿಯಂ ವಾಟರ್ ಕೇಸ್ ವಿತರಣೆ.
         </p>
       </section>
 
